@@ -1,0 +1,130 @@
+---
+- name: Confirm SSH connectivity
+  ansible.builtin.raw: "true"
+  changed_when: false
+
+- name: Locate target Python 3
+  ansible.builtin.raw: "command -v python3"
+  register: elijah_python_probe
+  changed_when: false
+  failed_when: false
+
+- name: Require Python 3 on the target
+  ansible.builtin.assert:
+    that:
+      - elijah_python_probe.rc == 0
+    fail_msg: "Python 3 is required on the target; install python3 and retry."
+
+- name: Check read access to the nginx log directory
+  ansible.builtin.raw: "test -d {{ elijah_log_directory | quote }} && test -r {{ elijah_log_directory | quote }}"
+  register: elijah_log_directory_probe
+  changed_when: false
+  failed_when: false
+
+- name: Require a readable nginx log directory
+  ansible.builtin.assert:
+    that:
+      - elijah_log_directory_probe.rc == 0
+    fail_msg: "The acquisition account cannot read {{ elijah_log_directory }}; grant adm-group read access."
+
+- name: Confirm the acquisition account is not root
+  ansible.builtin.raw: "id -u"
+  register: elijah_uid_probe
+  changed_when: false
+
+- name: Reject direct root acquisition
+  ansible.builtin.assert:
+    that:
+      - elijah_uid_probe.stdout | trim != '0'
+    fail_msg: "Use the dedicated forensic-acq account; direct root acquisition is not allowed."
+
+- name: Confirm adm-group membership
+  ansible.builtin.raw: "id -nG"
+  register: elijah_groups_probe
+  changed_when: false
+
+- name: Require adm-group membership
+  ansible.builtin.assert:
+    that:
+      - "'adm' in elijah_groups_probe.stdout.split()"
+    fail_msg: "The acquisition account must belong to the adm group."
+
+- name: Record control time before collection
+  ansible.builtin.set_fact:
+    elijah_control_started_utc: "{{ lookup('ansible.builtin.pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+
+- name: Create staging directories on the control host
+  ansible.builtin.file:
+    path: "{{ elijah_staging_dir }}/artifacts"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Run the read-only collector
+  ansible.builtin.script:
+    cmd: "{{ (playbook_dir ~ '/../collector.py') | quote }} --log-directory {{ elijah_log_directory | quote }}"
+  environment:
+    ELIJAH_LOG_GLOBS: "{{ elijah_log_globs | to_json }}"
+    ELIJAH_CONTEXT_COMMANDS: "{{ elijah_context_commands | to_json }}"
+  register: elijah_collector_run
+  changed_when: false
+
+- name: Parse collector JSON
+  ansible.builtin.set_fact:
+    elijah_collector: "{{ elijah_collector_run.stdout | from_json }}"
+
+- name: Record control time after the collection probe
+  ansible.builtin.set_fact:
+    elijah_control_probe_finished_utc: "{{ lookup('ansible.builtin.pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+
+- name: Save collector JSON on the control host
+  ansible.builtin.copy:
+    content: "{{ elijah_collector_run.stdout }}\n"
+    dest: "{{ elijah_staging_dir }}/collector.json"
+    mode: "0640"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Fetch each collected log to a collision-free flat staging path
+  ansible.builtin.fetch:
+    src: "{{ item.source_path }}"
+    dest: "{{ elijah_staging_dir }}/artifacts/{{ '%04d' | format(artifact_index) }}/"
+    flat: true
+  loop: "{{ elijah_collector.artifacts }}"
+  loop_control:
+    index_var: artifact_index
+    label: "{{ item.source_path }}"
+  when: item.collection_error is not defined
+
+- name: Record control time after artifact transfer
+  ansible.builtin.set_fact:
+    elijah_control_finished_utc: "{{ lookup('ansible.builtin.pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+
+- name: Build acquisition run metadata
+  ansible.builtin.set_fact:
+    elijah_run_metadata:
+      control_started_utc: "{{ elijah_control_started_utc }}"
+      control_probe_finished_utc: "{{ elijah_control_probe_finished_utc }}"
+      control_finished_utc: "{{ elijah_control_finished_utc }}"
+      target_address: "{{ ansible_host | default(inventory_hostname) }}"
+      ssh_user: "{{ ansible_user | default('forensic-acq') }}"
+      remote_tmp: "{{ elijah_remote_tmp }}"
+      files_created: "{{ elijah_target_footprint_files }}"
+      preflight_commands:
+        - "true"
+        - "command -v python3"
+        - "test -d and test -r {{ elijah_log_directory }}"
+        - "id -u"
+        - "id -nG"
+
+- name: Save acquisition run metadata on the control host
+  ansible.builtin.copy:
+    content: "{{ elijah_run_metadata | to_json }}\n"
+    dest: "{{ elijah_staging_dir }}/run_metadata.json"
+    mode: "0640"
+  delegate_to: localhost
+  become: false
+  run_once: true

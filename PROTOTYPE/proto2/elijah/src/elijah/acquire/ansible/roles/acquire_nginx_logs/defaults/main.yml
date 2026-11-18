@@ -1,0 +1,21 @@
+---
+elijah_case_id: C001
+elijah_log_globs:
+  - /var/log/nginx/access.log*
+  - /var/log/nginx/error.log*
+elijah_context_commands:
+  nginx_config:
+    - nginx
+    - -T
+  nginx_version:
+    - nginx
+    - -V
+  uname:
+    - uname
+    - -a
+elijah_staging_dir: "{{ playbook_dir }}/../../../../staging/{{ elijah_case_id }}"
+elijah_log_directory: /var/log/nginx
+elijah_remote_tmp: /tmp
+elijah_target_footprint_files:
+  - "Ansible-managed temporary collector script below {{ elijah_remote_tmp }} (random name; removed after execution)"
+  - "Ansible-managed temporary module files below {{ elijah_remote_tmp }} (random names; removed after execution)"
