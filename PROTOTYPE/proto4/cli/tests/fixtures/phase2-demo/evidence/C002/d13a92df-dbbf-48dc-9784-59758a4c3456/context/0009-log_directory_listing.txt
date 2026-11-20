@@ -1,0 +1,2 @@
+{"device":57,"gid":4,"inode":97627,"mode":"0640","mtime_utc":"2026-11-12T16:07:11.615627Z","path":"/var/log/nginx/access.log","size":20245,"uid":33}
+{"device":57,"gid":4,"inode":97628,"mode":"0640","mtime_utc":"2026-11-12T16:04:14.026903Z","path":"/var/log/nginx/error.log","size":532,"uid":33}

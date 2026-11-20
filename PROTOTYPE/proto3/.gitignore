@@ -1,0 +1,49 @@
+# Virtual environments & Python build artifacts
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Sensitive keys, credentials & temporary EC2 inventories (NEVER commit)
+*.pem
+*.key
+*id_ed25519*
+*id_rsa*
+.lapa/
+.elijah/
+keys/
+.tmp_keys*/
+lapa-ec2-inventory-*.ini
+.env
+.env.*
+*credentials*
+
+# Heavy dataset files (keep dataset/README.md and dataset/ingest_dataset.py tracked)
+dataset/*.log
+dataset/*.log.*
+dataset/*.csv
+dataset/*.gz
+dataset/*.zip
+dataset/*.tar*
+dataset/*.parquet
+
+# Generated forensic evidence, Parquet derivatives, analysis & reports at project root
+/evidence/
+/derived/
+/staging/
+/analysis/
+/bench/
+/reports/
+lab/traffic/output/*.jsonl
+
+# macOS / OS metadata
+.DS_Store
+Thumbs.db

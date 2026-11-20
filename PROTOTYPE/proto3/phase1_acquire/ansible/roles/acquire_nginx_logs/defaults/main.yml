@@ -1,0 +1,21 @@
+---
+lapa_case_id: C001
+lapa_log_globs:
+  - /var/log/nginx/access.log*
+  - /var/log/nginx/error.log*
+lapa_context_commands:
+  nginx_config:
+    - nginx
+    - -T
+  nginx_version:
+    - nginx
+    - -V
+  uname:
+    - uname
+    - -a
+lapa_staging_dir: "{{ playbook_dir }}/../../../../staging/{{ lapa_case_id }}"
+lapa_log_directory: /var/log/nginx
+lapa_remote_tmp: /tmp
+lapa_target_footprint_files:
+  - "Ansible-managed temporary collector script below {{ lapa_remote_tmp }} (random name; removed after execution)"
+  - "Ansible-managed temporary module files below {{ lapa_remote_tmp }} (random names; removed after execution)"

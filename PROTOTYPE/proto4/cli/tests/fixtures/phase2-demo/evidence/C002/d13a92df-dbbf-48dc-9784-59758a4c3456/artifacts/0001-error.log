@@ -1,0 +1,2 @@
+2026/11/11 11:52:46 [error] 13#13: *49 connect() failed (111: Connection refused) while connecting to upstream, client: 172.23.0.3, server: _, request: "GET /upstream/synthetic-outage HTTP/1.1", upstream: "http://127.0.0.1:8081/synthetic-outage", host: "target"
+2026/11/12 16:04:14 [error] 14#14: *79 connect() failed (111: Connection refused) while connecting to upstream, client: 172.23.0.1, server: _, request: "GET /upstream/lapa-phase2-demo HTTP/1.1", upstream: "http://127.0.0.1:8081/lapa-phase2-demo", host: "127.0.0.1:8080"

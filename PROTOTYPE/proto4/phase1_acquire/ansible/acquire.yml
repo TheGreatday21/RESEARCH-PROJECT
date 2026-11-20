@@ -1,0 +1,7 @@
+---
+- name: Acquire nginx logs with read-only collection
+  hosts: target
+  gather_facts: false
+  become: false
+  roles:
+    - acquire_nginx_logs

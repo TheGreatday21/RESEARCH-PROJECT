@@ -1,0 +1,57 @@
+# Python environments, caches, and packaging artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Heavy external dataset files (keep dataset/README.md and dataset/ingest_dataset.py)
+dataset/*.log
+dataset/*.log.*
+dataset/*.csv
+dataset/*.gz
+dataset/*.parquet
+dataset/*.jsonl
+dataset/*.zip
+dataset/*.tar
+dataset/*.tar.*
+
+# Runtime forensic outputs (anchored to repo root so test fixtures remain tracked)
+/evidence/
+/derived/
+/staging/
+/analysis/
+/bench/
+/reports/
+lab/traffic/output/
+aws_lab_labels.jsonl
+
+# Sensitive keys, credentials, environment files, and real-server inventories
+*.pem
+*.key
+*.p12
+*.pfx
+*.ppk
+id_ed25519
+id_ed25519.pub
+id_rsa
+id_rsa.pub
+lab/target/id_ed25519
+lab/target/id_ed25519.pub
+/keys/
+.env
+.env.*
+.aws/
+*credentials*
+*.secret*
+lapa-ec2-inventory-*.ini
+my_server*.ini
+*.local.ini
+
+# macOS metadata
+.DS_Store

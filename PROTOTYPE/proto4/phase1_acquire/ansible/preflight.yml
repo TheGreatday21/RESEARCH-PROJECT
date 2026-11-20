@@ -1,0 +1,103 @@
+---
+- name: Read-only preflight check for nginx log acquisition
+  hosts: target
+  gather_facts: false
+  become: false
+  vars:
+    lapa_log_directory: /var/log/nginx
+    lapa_preflight_output: ""
+  tasks:
+    - name: Confirm SSH connectivity
+      ansible.builtin.raw: "true"
+      register: lapa_ssh_probe
+      changed_when: false
+
+    - name: Check target user ID
+      ansible.builtin.raw: "id -u"
+      register: lapa_uid_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Check target group memberships
+      ansible.builtin.raw: "id -nG"
+      register: lapa_groups_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Check read access to the nginx log directory
+      ansible.builtin.raw: "test -d {{ lapa_log_directory | quote }} && test -r {{ lapa_log_directory | quote }}"
+      register: lapa_log_dir_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Check readable access.log* files
+      ansible.builtin.raw: >-
+        sh -c 'found=0; readable=0; for f in "$1"/access.log*; do [ -f "$f" ] || continue; found=$((found+1)); [ -r "$f" ] && readable=$((readable+1)); done; printf "%d %d\n" "$found" "$readable"' _ {{ lapa_log_directory | quote }}
+      register: lapa_access_logs_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Check readable error.log* files
+      ansible.builtin.raw: >-
+        sh -c 'found=0; readable=0; for f in "$1"/error.log*; do [ -f "$f" ] || continue; found=$((found+1)); [ -r "$f" ] && readable=$((readable+1)); done; printf "%d %d\n" "$found" "$readable"' _ {{ lapa_log_directory | quote }}
+      register: lapa_error_logs_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Check Python 3.8+ availability
+      ansible.builtin.raw: >-
+        sh -c 'py=$(command -v python3 || true); [ -n "$py" ] || exit 127; printf "%s\n" "$py"; "$py" -c "import sys; print(\"%d.%d.%d\" % sys.version_info[:3]); sys.exit(0 if sys.version_info >= (3, 8) else 2)"'
+      register: lapa_python_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Check nginx binary availability
+      ansible.builtin.raw: 'sh -c ''PATH="$PATH:/usr/sbin:/sbin" command -v nginx'''
+      register: lapa_nginx_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Build preflight probe summary
+      ansible.builtin.set_fact:
+        lapa_preflight_probes:
+          ssh_connect:
+            rc: "{{ lapa_ssh_probe.rc | default(0) | int }}"
+            stdout: "{{ lapa_ssh_probe.stdout | default('') }}"
+            stderr: "{{ lapa_ssh_probe.stderr | default('') }}"
+          uid:
+            rc: "{{ lapa_uid_probe.rc | default(1) | int }}"
+            stdout: "{{ lapa_uid_probe.stdout | default('') }}"
+            stderr: "{{ lapa_uid_probe.stderr | default('') }}"
+          groups:
+            rc: "{{ lapa_groups_probe.rc | default(1) | int }}"
+            stdout: "{{ lapa_groups_probe.stdout | default('') }}"
+            stderr: "{{ lapa_groups_probe.stderr | default('') }}"
+          log_directory:
+            rc: "{{ lapa_log_dir_probe.rc | default(1) | int }}"
+            stdout: "{{ lapa_log_dir_probe.stdout | default('') }}"
+            stderr: "{{ lapa_log_dir_probe.stderr | default('') }}"
+          access_logs:
+            rc: "{{ lapa_access_logs_probe.rc | default(1) | int }}"
+            stdout: "{{ lapa_access_logs_probe.stdout | default('') }}"
+            stderr: "{{ lapa_access_logs_probe.stderr | default('') }}"
+          error_logs:
+            rc: "{{ lapa_error_logs_probe.rc | default(1) | int }}"
+            stdout: "{{ lapa_error_logs_probe.stdout | default('') }}"
+            stderr: "{{ lapa_error_logs_probe.stderr | default('') }}"
+          python3:
+            rc: "{{ lapa_python_probe.rc | default(1) | int }}"
+            stdout: "{{ lapa_python_probe.stdout | default('') }}"
+            stderr: "{{ lapa_python_probe.stderr | default('') }}"
+          nginx:
+            rc: "{{ lapa_nginx_probe.rc | default(1) | int }}"
+            stdout: "{{ lapa_nginx_probe.stdout | default('') }}"
+            stderr: "{{ lapa_nginx_probe.stderr | default('') }}"
+
+    - name: Write preflight probe JSON on the control host
+      ansible.builtin.copy:
+        content: "{{ lapa_preflight_probes | to_json }}\n"
+        dest: "{{ lapa_preflight_output }}"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+      run_once: true
